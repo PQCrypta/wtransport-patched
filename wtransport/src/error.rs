@@ -52,11 +52,22 @@ impl ConnectionError {
         }
     }
 
+    /// Get connection error from a closed QUIC connection.
+    ///
+    /// FIXED: Handle race condition where connection is still alive when this is called.
+    /// Previously this would panic with "QUIC connection is still alive on close-cast".
+    /// Now gracefully returns LocallyClosed when close_reason() returns None.
     pub(crate) fn no_connect(quic_connection: &quinn::Connection) -> Self {
-        quic_connection
-            .close_reason()
-            .expect("QUIC connection is still alive on close-cast")
-            .into()
+        match quic_connection.close_reason() {
+            Some(reason) => reason.into(),
+            None => {
+                // Connection is still alive but driver reported NotConnected.
+                // This can happen in race conditions when the driver thread
+                // processes incoming streams while connection cleanup is triggered.
+                // Return LocallyClosed as a sensible default instead of panicking.
+                ConnectionError::LocallyClosed
+            }
+        }
     }
 
     pub(crate) fn local_h3_error(error_code: ErrorCode) -> Self {
@@ -115,13 +126,22 @@ pub enum ConnectingError {
 }
 
 impl ConnectingError {
+    /// Create a ConnectingError from a QUIC connection that failed.
+    ///
+    /// FIXED: Handle race condition where connection is still alive when this is called.
+    /// Previously this would panic with "QUIC connection is still alive on close-cast".
+    /// Now gracefully returns LocallyClosed when close_reason() returns None.
     pub(crate) fn with_no_connection(quic_connection: &quinn::Connection) -> Self {
-        ConnectingError::ConnectionError(
-            quic_connection
-                .close_reason()
-                .expect("QUIC connection is still alive on close-cast")
-                .into(),
-        )
+        ConnectingError::ConnectionError(match quic_connection.close_reason() {
+            Some(reason) => reason.into(),
+            None => {
+                // Connection is still alive but an error was reported.
+                // This can happen in race conditions when the driver thread
+                // processes incoming streams while connection cleanup is triggered.
+                // Return LocallyClosed as a sensible default instead of panicking.
+                ConnectionError::LocallyClosed
+            }
+        })
     }
 
     pub(crate) fn with_connect_error(error: quinn::ConnectError) -> Self {
