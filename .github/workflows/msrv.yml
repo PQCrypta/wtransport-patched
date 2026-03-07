@@ -3,6 +3,7 @@ name: MSRV
 on:
   schedule:
     - cron: "0 9,18 * * *"
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
