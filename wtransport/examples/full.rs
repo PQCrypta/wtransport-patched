@@ -69,16 +69,18 @@ mod webtransport {
         pub async fn serve(self) -> Result<()> {
             info!("Server running on port {}", self.local_port());
 
-            for id in 0.. {
+            // A plain counter: `for id in 0..` counted in i32 and would
+            // overflow after 2^31 connections.
+            let mut id: u64 = 0;
+            loop {
                 let incoming_session = self.endpoint.accept().await;
 
                 tokio::spawn(
                     Self::handle_incoming_session(incoming_session)
                         .instrument(info_span!("Connection", id)),
                 );
+                id += 1;
             }
-
-            Ok(())
         }
 
         async fn handle_incoming_session(incoming_session: IncomingSession) {
@@ -161,7 +163,7 @@ mod http {
     use tokio::net::TcpListener;
 
     pub struct HttpServer {
-        serve: Serve<Router, Router>,
+        serve: Serve<TcpListener, Router, Router>,
         local_port: u16,
     }
 

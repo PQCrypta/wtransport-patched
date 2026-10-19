@@ -467,7 +467,7 @@ mod tests {
     use super::*;
     use rand::random;
     use rand::rng;
-    use rand::Rng;
+    use rand::RngExt;
 
     #[test]
     fn decode_field_line_type() {
