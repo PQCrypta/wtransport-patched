@@ -25,12 +25,14 @@ async fn main() -> Result<()> {
 
     info!("Server ready!");
 
-    for id in 0.. {
+    // A plain counter: `for id in 0..` counted in i32 and would overflow after
+    // 2^31 connections.
+    let mut id: u64 = 0;
+    loop {
         let incoming_session = server.accept().await;
         tokio::spawn(handle_connection(incoming_session).instrument(info_span!("Connection", id)));
+        id += 1;
     }
-
-    Ok(())
 }
 
 async fn handle_connection(incoming_session: IncomingSession) {
