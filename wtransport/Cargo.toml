@@ -94,6 +94,10 @@ allowed_external_types = [
     "rustls::verify::ServerCertVerifier",
     "rustls::webpki::anchors::RootCertStore",
     "time",
+    # Recent time releases define Duration at the crate root; older ones in
+    # time::duration. offset_from_not_before takes one, through the
+    # tls::self_signed::time re-export.
+    "time::Duration",
     "time::duration::Duration",
     "time::offset_date_time::OffsetDateTime",
     "tokio::io::async_read::AsyncRead",
